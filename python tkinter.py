@@ -96,6 +96,43 @@ def toggle_eraser():
     else:
         eraser_button.config(relief=FLAT, bg="SystemButtonFace")  # 버튼이 눌리지 않음
 
+def show_magnifier(event):
+    """돋보기 기능을 처리하는 함수"""
+    global magnifier_image, magnifier_active
+    if not magnifier_active:  # 돋보기가 활성화된 경우에만 실행
+        return
+    
+    # 마우스 위치에 따라 확대할 영역의 중심을 계산
+    x, y = event.x, event.y
+    size = 100  # 돋보기 크기 설정
+    zoom_factor = 2  # 확대 비율 설정
+
+    # 확대할 영역 계산
+    magnified_area = img[y - size//2:y + size//2, x - size//2:x + size//2]
+
+    # 이미지 확대
+    magnified_area_resized = cv2.resize(magnified_area, (size * zoom_factor, size * zoom_factor), interpolation=cv2.INTER_LINEAR)
+
+    # 확대된 이미지를 tkinter 형식으로 변환
+    magnified_area_rgb = cv2.cvtColor(magnified_area_resized, cv2.COLOR_BGR2RGB)
+    magnified_area_pil = Image.fromarray(magnified_area_rgb)
+    magnified_area_tk = ImageTk.PhotoImage(magnified_area_pil)
+
+    # 기존의 돋보기 이미지를 지우고 새로운 이미지를 업데이트
+    if magnifier_image:
+        canvas.delete(magnifier_image)
+    magnifier_image = canvas.create_image(x + 10, y + 10, image=magnified_area_tk)
+    canvas.magnified_area_tk = magnified_area_tk  # 참조 유지
+
+def toggle_magnifier():
+    """돋보기 버튼을 눌러 활성화/비활성화"""
+    global magnifier_active
+    magnifier_active = not magnifier_active
+    if magnifier_active:
+        magnifier_button.config(relief=RAISED, bg="lightgrey")  # 버튼이 눌려졌음을 나타냄
+    else:
+        magnifier_button.config(relief=FLAT, bg="SystemButtonFace")  # 버튼이 눌리지 않음
+
 # 전역 변수 선언 부분
 window = None
 canvas = None
@@ -106,6 +143,8 @@ penWidth = 5
 img = np.ones((300, 300, 3), dtype=np.uint8) * 255  # OpenCV 이미지 초기화 (흰색 배경)
 eraserMode = False  # 지우개 모드
 drawn_lines = []  # 그린 선들의 ID 저장
+magnifier_image = None  # 돋보기 이미지 참조
+magnifier_active = False  # 돋보기 기능 활성화 여부
 
 # 메인 코드 부분
 if __name__ == "__main__":
@@ -126,6 +165,7 @@ if __name__ == "__main__":
     canvas.bind("<Button-1>", mouseClick)
     canvas.bind("<ButtonRelease-1>", mouseDrop)
     canvas.bind("<Button-3>", fillColor)
+    canvas.bind("<Motion>", show_magnifier)  # 마우스 이동 시 돋보기 표시
 
     # 메뉴 설정
     mainMenu = Menu(window)
@@ -140,5 +180,9 @@ if __name__ == "__main__":
     # 지우개 버튼 추가
     eraser_button = Button(window, text="지우개", command=toggle_eraser)
     eraser_button.pack(side=LEFT, padx=10)
+
+    # 돋보기 버튼 추가
+    magnifier_button = Button(window, text="돋보기", command=toggle_magnifier)
+    magnifier_button.pack(side=LEFT, padx=10)
 
     window.mainloop()
